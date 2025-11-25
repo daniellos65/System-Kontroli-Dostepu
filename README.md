@@ -9,25 +9,23 @@ Celem projektu jest stworzenie systemu kontroli dostępu do fabryki, który skut
 1. **Skanowanie kodu QR** (przepustka pracownicza).
 2. **Biometryczna analiza twarzy** (weryfikacja tożsamości).
 
-[cite_start]System rejestruje próby wejścia, zarządza bazą pracowników i generuje raporty dla działu kadr[cite: 9].
+System rejestruje próby wejścia, zarządza bazą pracowników i generuje raporty dla działu kadr.
 
 ### Kluczowe Wymagania (KPI)
 
-* [cite_start]⏱️ **Czas weryfikacji:** < 5 sekund[cite: 4, 9].
-* [cite_start]🎯 **Trafność rozpoznawania:** > 90%[cite: 4, 9].
-* [cite_start]📹 **Sprzęt:** Obsługa standardowych kamer USB[cite: 4, 9].
-* 👥 **Skala:** Min. [cite_start]20 pracowników w bazie[cite: 4].
+* ⏱️ **Czas weryfikacji:** < 5 sekund.
+* 🎯 **Trafność rozpoznawania:** > 90%.
+* 📹 **Sprzęt:** Obsługa standardowych kamer USB.
+* 👥 **Skala:** Min. 20 pracowników w bazie.
 
 ## 🛠️ Technologie
 
 | Obszar | Technologia | Uzasadnienie |
 | :--- | :--- | :--- |
-| **Backend / AI** | Python 3.x | [cite_start]Biblioteki `OpenCV`, `face_recognition` do szybkiego prototypowania CV[cite: 2, 15]. |
-| **Frontend** | React.js | [cite_start]Nowoczesny panel administratora (SPA)[cite: 2, 19]. |
-| **Baza Danych** | PostgreSQL | [cite_start]Bezpieczeństwo danych relacyjnych i logów[cite: 2, 17]. |
+| **Backend / AI** | Python 3.x | Biblioteki `OpenCV`, `face_recognition` do szybkiego prototypowania CV. |
+| **Frontend** | React.js | Nowoczesny panel administratora (SPA). |
+| **Baza Danych** | PostgreSQL | Bezpieczeństwo danych relacyjnych i logów. |
 | **Konteneryzacja** | Docker | Łatwe uruchomienie środowiska (opcjonalnie). |
-
-
 
 ## ⚙️ Instalacja i Uruchomienie
 
@@ -61,7 +59,8 @@ npm start
 
 ## 📂 Struktura Bazy Danych
 
-[cite_start]System opiera się na 3 głównych encjach[cite: 6]:
+(wstępna struktura, do zmiany)
+System opiera się na 3 głównych encjach:
 1. **Pracownik:** `id`, `imie`, `nazwisko`, `zdjecie_ref`, `qr_uuid`, `termin_waznosci`.
 2. **LogWejscia:** `id`, `timestamp`, `status`, `zdjecie_proby`, `powod_odrzucenia`.
 3. **Administrator:** `login`, `hash_hasla`.
@@ -70,9 +69,9 @@ npm start
 
 | Imię i Nazwisko | Rola Główna | Kompetencje Kluczowe |
 | :--- | :--- | :--- |
-| **Bartosz Łyczak** | Database Architect / Fullstack | [cite_start]PostgreSQL, React, Python [cite: 2] |
-| **Wiktor Banek** | Backend / Hardware Integration | [cite_start]Python, Integracja sprzętowa [cite: 2] |
-| **Daniel Kubiela** | Computer Vision / Frontend Support | [cite_start]OpenCV, React, Python [cite: 2] |
+| **Bartosz Łyczak** | Database Architect / Fullstack | PostgreSQL, React, Python |
+| **Wiktor Banek** | Backend / Hardware Integration | Python, Integracja sprzętowa |
+| **Daniel Kubiela** | Computer Vision / Frontend Support | OpenCV, React, Python |
 
 ## 📄 Licencja
 
