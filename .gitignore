@@ -13,3 +13,4 @@ frontend/build/
 # --- Systemowe ---
 .vscode/
 .idea/
+.github/
