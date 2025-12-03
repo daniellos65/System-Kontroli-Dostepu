@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 backend/venv/
 backend/.env
+backend/uploads/logs/
+backend/uploads/references/
 *.log
 
 # --- Node/React (Frontend) ---
