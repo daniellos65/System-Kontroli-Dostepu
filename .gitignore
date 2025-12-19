@@ -1,6 +1,7 @@
 # --- Python (Backend) ---
 __pycache__/
 *.py[cod]
+venv/
 backend/venv/
 backend/.env
 backend/uploads/logs/

@@ -4,7 +4,6 @@ import unicodedata
 from database import get_db_connection
 from datetime import datetime, date, time as dt_time
 
-# Funkcja pomocnicza do usuwania polskich znaków 
 def remove_accents(input_str):
     if not input_str:
         return ""
@@ -14,13 +13,14 @@ def remove_accents(input_str):
 def check_qr_in_db(qr_uuid):
     conn = get_db_connection()
     if not conn:
-        return None, "Brak polaczenia z baza." # Bez polskich znaków
+        return None, "Brak polaczenia z baza."
 
     cur = conn.cursor()
 
     try:
+        # POBIERAMY RÓWNIEŻ employee_id
         cur.execute("""
-            SELECT first_name, last_name, qr_valid_until, photo_ref
+            SELECT employee_id, first_name, last_name, qr_valid_until, photo_ref
             FROM Employees
             WHERE qr_code_uuid = %s
         """, (qr_uuid,))
@@ -32,15 +32,17 @@ def check_qr_in_db(qr_uuid):
 
         # Rozpakowanie wyniku
         if isinstance(result, dict):
+            emp_id = result['employee_id']
             first_name = result['first_name']
             last_name = result['last_name']
             valid_until = result['qr_valid_until']
             photo_ref = result['photo_ref']
         else:
-            first_name = result[0]
-            last_name = result[1]
-            valid_until = result[2]
-            photo_ref = result[3]
+            emp_id = result[0]
+            first_name = result[1]
+            last_name = result[2]
+            valid_until = result[3]
+            photo_ref = result[4]
 
         # Logika daty
         if isinstance(valid_until, str):
@@ -53,20 +55,19 @@ def check_qr_in_db(qr_uuid):
         if valid_until < datetime.now():
             return None, "Kod QR wygasl"
         
+        # ZWRACAMY SŁOWNIK Z ID
         employee_data = {
+            "id": emp_id,
             "name": f"{first_name} {last_name}",
             "photo_ref": photo_ref
         }
 
-        return employee_data, "Dostep przyznany" # Bez polskich znaków
+        return employee_data, "Dostep przyznany"
     
     except Exception as e:
-        print(f"DEBUG Error: {e}") # Logowanie błędu do konsoli
+        print(f"DEBUG Error: {e}")
         return None, "Blad systemu."
     
     finally:
-        # Zawsze zamykamy połączenie, nawet przy błędzie
         if cur: cur.close()
         if conn: conn.close()
-
-
