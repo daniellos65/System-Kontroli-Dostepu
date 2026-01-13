@@ -5,8 +5,8 @@ import os
 # Konfiguracja bazy (na razie na sztywno, docelowo w pliku .env)
 DB_CONFIG = {
     "dbname": "system_kontroli_dostepu",    # Nazwa bazy danych
-    "user": "postgres",      # <--- ZMIEŃ NA SWÓJ LOGIN (wynik komendy `whoami`)
-    "password": "",            
+    "user": "lycz",      # <--- ZMIEŃ NA SWÓJ LOGIN (wynik komendy `whoami`)
+    "password": "lycz123",            
     "host": "localhost",
     "port": "5432"
 }
@@ -30,6 +30,7 @@ def find_employee_by_qr_code(qr_code):
     Wyszukuje pracownika w bazie danych na podstawie kodu QR.
     Zwraca słownik z danymi pracownika lub None, jeśli nie znaleziono.
     """
+    print("xxxxx")
     connection = get_db_connection()
     if connection is None:
         return None
