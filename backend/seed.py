@@ -10,7 +10,7 @@ def add_test_employee():
     users = [
         ("1","Wiktor", "Banek", "wiktor.jpg", "WB_qr"),
         ("2","Daniel", "Kubiela", "daniel.jpg", "DK_qr"),
-        ("3","Bartosz", "Lyczak", "bartosz.jpg", "BL_qr"),
+        ("3","Bartosz", "Łyczak", "bartosz.jpg", "BL_qr"),
     ]
 
     try:

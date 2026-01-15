@@ -1,5 +1,15 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Button,
+  Paper,
+  Title,
+  Text,
+  Container,
+  Group,
+  Box,
+  SimpleGrid,
+} from '@mantine/core';
+import { IconShieldLock, IconLogout, IconHistory, IconUsers } from '@tabler/icons-react';
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
@@ -10,40 +20,80 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white to-blue-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-primary-700">
+    // Główny kontener
+    <Box style={{ minHeight: '100vh', backgroundColor: '#f8f9fa', display: 'flex', flexDirection: 'column' }}>
+
+      {/* HEADER NA GÓRZE */}
+      <Paper p="md" radius={0} shadow="xs" style={{ backgroundColor: '#1a1b1e', color: 'white', zIndex: 10 }}>
+        <Container size="lg">
+          <Group justify="space-between">
+            <Group>
+              <IconShieldLock size={24} color="#4dabf7" />
+              <Text fw={700} style={{ letterSpacing: '1px', textTransform: 'uppercase' }}>
+                System Kontroli Dostępu
+              </Text>
+            </Group>
+            <Button
+              leftSection={<IconLogout size={16} />}
+              color="red"
+              variant="subtle"
+              onClick={handleLogout}
+            >
+              Wyloguj
+            </Button>
+          </Group>
+        </Container>
+      </Paper>
+
+      {/* GŁÓWNA ZAWARTOŚĆ */}
+      <Box style={{ flex: 1, padding: '40px 20px' }}>
+        <Container size="lg">
+          <Title fw={900} mb="lg">
             Panel Administratora
-          </h1>
-          <button
-            onClick={handleLogout}
-            className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition duration-200"
-          >
-            Wyloguj
-          </button>
-        </div>
+          </Title>
+          <Text c="dimmed" size="md" mb={40}>
+            Zarządzaj systemem kontroli dostępu
+          </Text>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-primary-700 mb-4">
-              Logi wejść
-            </h2>
-            <p className="text-gray-600">
-              Przeglądaj logi wejść pracowników - funkcjonalność do wdrożenia
-            </p>
-          </div>
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-primary-700 mb-4">
-              Zarządzanie pracownikami
-            </h2>
-            <p className="text-gray-600">
-              Dodawanie i edycja pracowników - funkcjonalność do wdrożenia
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+            {/* KARTA: LOGI WEJŚĆ */}
+            <Paper withBorder p={30} radius="md" shadow="sm">
+              <Group mb="lg">
+                <IconHistory size={32} color="#4dabf7" />
+                <div>
+                  <Title order={3}>Logi wejść</Title>
+                  <Text c="dimmed" size="sm">Przeglądaj historię wejść</Text>
+                </div>
+              </Group>
+              <Text c="dimmed" size="sm" mb={20}>
+                Funkcjonalność do wdrożenia - podgląd rejestracji wszystkich wejść pracowników
+              </Text>
+              <Button fullWidth radius="md" color="blue" variant="light" disabled>
+                Przejdź do logów
+              </Button>
+            </Paper>
+
+            {/* KARTA: ZARZĄDZANIE PRACOWNIKAMI */}
+            <Paper withBorder p={30} radius="md" shadow="sm">
+              <Group mb="lg">
+                <IconUsers size={32} color="#4dabf7" />
+                <div>
+                  <Title order={3}>Pracownicy</Title>
+                  <Text c="dimmed" size="sm">Zarządzaj danymi pracowników</Text>
+                </div>
+              </Group>
+              <Text c="dimmed" size="sm" mb={20}>
+                Funkcjonalność do wdrożenia - dodawanie, edycja i usuwanie pracowników
+              </Text>
+              <Button fullWidth radius="md" color="blue" variant="light" disabled>
+                Zarządzaj pracownikami
+              </Button>
+            </Paper>
+
+          </SimpleGrid>
+        </Container>
+      </Box>
+    </Box>
   );
 }

@@ -1,6 +1,6 @@
 from database import get_db_connection
 
-# Do wyjebania 
+# Do Usunięcia
 
 def create_logs_table():
     conn = get_db_connection()
