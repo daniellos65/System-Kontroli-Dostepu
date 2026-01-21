@@ -18,7 +18,7 @@ System rejestruje próby wejścia, zarządza bazą pracowników i generuje rapor
 **Sprzęt:** Obsługa standardowych kamer USB.
 **Skala:** Min. 20 pracowników w bazie.
 
-## 🛠️ Technologie
+##  Technologie
 
 | Obszar | Technologia | Uzasadnienie |
 | :--- | :--- | :--- |
