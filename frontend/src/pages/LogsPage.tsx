@@ -16,6 +16,8 @@ import {
   Grid,
   ScrollArea,
   Alert,
+  Image,
+  Modal,
 } from '@mantine/core';
 import {
   IconShieldLock,
@@ -24,6 +26,8 @@ import {
   IconAlertCircle,
   IconCheck,
   IconX,
+  IconDownload,
+  IconFileTypePdf,
 } from '@tabler/icons-react';
 import {
   BarChart,
@@ -35,6 +39,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import jsPDF from 'jspdf';
 
 interface LogEntry {
   filename: string;
@@ -55,6 +60,9 @@ export default function LogsPage() {
   const [chartData, setChartData] = useState<
     Array<{ date: string; ok: number; denied: number }>
   >([]);
+  const [selectedLogImage, setSelectedLogImage] = useState<string | null>(null);
+  const [selectedLogFilename, setSelectedLogFilename] = useState<string | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
@@ -152,6 +160,159 @@ export default function LogsPage() {
     return `${API_BASE_URL.replace('/api', '')}/uploads/references/${photoRef}`;
   };
 
+  const downloadLogImage = async (filename: string) => {
+    try {
+      const response = await fetch(getLogPhotoUrl(filename));
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Błąd podczas pobierania zdjęcia:', err);
+    }
+  };
+
+  const generatePdfReport = async () => {
+    if (!logs.length) {
+      setError('Brak logów do wygenerowania raportu');
+      return;
+    }
+
+    setGeneratingPdf(true);
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      let yPosition = 10;
+      const margin = 10;
+
+      // Nagłówek
+      pdf.setFontSize(16);
+      pdf.text('Raport Logów Systemu Kontroli Dostępu', margin, yPosition);
+      yPosition += 8;
+
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      const generatedDate = new Date().toLocaleString('pl-PL');
+      pdf.text(`Wygenerowano: ${generatedDate}`, margin, yPosition);
+      yPosition += 8;
+
+      // Statystyka
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFontSize(11);
+      pdf.text('Statystyka:', margin, yPosition);
+      yPosition += 6;
+
+      const successCount = logs.filter((l) => l.status === 'ok').length;
+      const deniedCount = logs.filter((l) => l.status === 'denied').length;
+      const successRate = logs.length > 0 ? ((successCount / logs.length) * 100).toFixed(1) : '0';
+
+      pdf.setFontSize(9);
+      pdf.setTextColor(50, 50, 50);
+      pdf.text(`• Udane wejścia: ${successCount}`, margin + 5, yPosition);
+      yPosition += 5;
+      pdf.text(`• Odrzucone wejścia: ${deniedCount}`, margin + 5, yPosition);
+      yPosition += 5;
+      pdf.text(`• Współczynnik sukcesu: ${successRate}%`, margin + 5, yPosition);
+      yPosition += 10;
+
+      // Logi
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFontSize(11);
+      pdf.text('Szczegółowe logi:', margin, yPosition);
+      yPosition += 8;
+
+      // Tabela nagłówków
+      pdf.setFontSize(9);
+      pdf.setFillColor(200, 200, 200);
+      const colWidths = [15, 20, 30, 25, 30];
+      const headers = ['Status', 'ID', 'Pracownik', 'Godzina', 'Zdjęcie'];
+      let xPosition = margin;
+
+      headers.forEach((header, idx) => {
+        pdf.text(header, xPosition, yPosition, { maxWidth: colWidths[idx] - 2 });
+        xPosition += colWidths[idx];
+      });
+
+      yPosition += 7;
+      pdf.setDrawColor(150, 150, 150);
+      pdf.line(margin, yPosition - 1, pageWidth - margin, yPosition - 1);
+      yPosition += 1;
+
+      // Dane logów
+      pdf.setFontSize(8);
+      pdf.setTextColor(0, 0, 0);
+
+      for (const log of logs) {
+        // Sprawdź czy jest miejsce na nową linię
+        if (yPosition > pageHeight - 20) {
+          pdf.addPage();
+          yPosition = 10;
+        }
+
+        xPosition = margin;
+        const status = log.status === 'ok' ? '✓ Udane' : '✗ Odrzucone';
+        
+        // Status
+        if (log.status === 'ok') {
+          pdf.setTextColor(0, 128, 0);
+        } else {
+          pdf.setTextColor(255, 0, 0);
+        }
+        pdf.text(status, xPosition, yPosition, { maxWidth: colWidths[0] - 2 });
+        
+        // ID
+        pdf.setTextColor(0, 0, 0);
+        xPosition += colWidths[0];
+        pdf.text(log.user_id.toString(), xPosition, yPosition, { maxWidth: colWidths[1] - 2 });
+
+        // Pracownik
+        xPosition += colWidths[1];
+        pdf.text(log.employee_name, xPosition, yPosition, { maxWidth: colWidths[2] - 2 });
+
+        // Godzina
+        xPosition += colWidths[2];
+        const formattedTime = formatTimestamp(log.timestamp);
+        pdf.text(formattedTime, xPosition, yPosition, { maxWidth: colWidths[3] - 2 });
+
+        // Zdjęcie (link do pobrania)
+        xPosition += colWidths[3];
+        pdf.setTextColor(0, 0, 255);
+        pdf.textWithLink('[pobierz]', xPosition, yPosition, { pageNumber: undefined });
+
+        yPosition += 6;
+      }
+
+      // Stopka
+      pdf.setFontSize(8);
+      pdf.setTextColor(150, 150, 150);
+      const totalPages = pdf.internal.pages.length - 1;
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.text(
+          `Strona ${i} z ${totalPages}`,
+          pageWidth / 2,
+          pageHeight - 5,
+          { align: 'center' }
+        );
+      }
+
+      // Pobierz PDF
+      const filename = `raport-logi-${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(filename);
+    } catch (err) {
+      console.error('Błąd podczas generowania PDF:', err);
+      setError('Błąd podczas generowania raportu PDF');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   return (
     <Box style={{ minHeight: '100vh', backgroundColor: '#f8f9fa', display: 'flex', flexDirection: 'column' }}>
       {/* HEADER */}
@@ -204,138 +365,221 @@ export default function LogsPage() {
               <Loader size="lg" />
             </Center>
           ) : (
-            <Grid gutter="lg" style={{ minHeight: '600px' }}>
-              {/* LEWA STRONA: LISTA LOGÓW */}
-              <Grid.Col span={{ base: 12, sm: 12, md: 6 }}>
-                <Paper withBorder p="lg" radius="md" shadow="sm">
-                  <Title order={4} mb="lg">
-                    Historia wejść ({logs.length})
-                  </Title>
+            <>
+              {/* PRZYCISK WYGENERUJ RAPORT */}
+              <Group justify="flex-end" mb="lg">
+                <Button
+                  leftSection={<IconFileTypePdf size={16} />}
+                  color="red"
+                  onClick={generatePdfReport}
+                  loading={generatingPdf}
+                  disabled={logs.length === 0}
+                >
+                  Wygeneruj raport PDF
+                </Button>
+              </Group>
 
-                  <ScrollArea style={{ height: '600px' }}>
-                    <Stack gap="sm">
-                      {logs.length === 0 ? (
-                        <Text c="dimmed" ta="center">
-                          Brak logów
-                        </Text>
-                      ) : (
-                        logs.map((log, index) => (
-                          <Paper
-                            key={index}
-                            withBorder
-                            p="sm"
-                            radius="md"
-                            style={{
-                              backgroundColor:
-                                log.status === 'ok' ? '#f0fdf4' : '#fef2f2',
-                              borderColor: log.status === 'ok' ? '#86efac' : '#fca5a5',
-                              borderWidth: 2,
-                            }}
-                          >
-                            <Group gap="sm" mb="sm">
-                              <Avatar
-                                src={
-                                  getEmployeePhotoUrl(log.photo_ref) ||
-                                  getLogPhotoUrl(log.filename)
-                                }
-                                size="lg"
-                                radius="md"
-                              />
-                              <div style={{ flex: 1 }}>
-                                <Text fw={600} size="sm">
-                                  {log.employee_name}
-                                </Text>
-                                <Text size="xs" c="dimmed">
-                                  ID: {log.user_id}
-                                </Text>
-                              </div>
-                              <Badge
-                                color={log.status === 'ok' ? 'green' : 'red'}
-                                variant="filled"
-                                leftSection={
-                                  log.status === 'ok' ? (
-                                    <IconCheck size={14} />
-                                  ) : (
-                                    <IconX size={14} />
-                                  )
-                                }
+              <Grid gutter="lg" style={{ minHeight: '600px' }}>
+                {/* LEWA STRONA: LISTA LOGÓW */}
+                <Grid.Col span={{ base: 12, sm: 12, md: 6 }}>
+                  <Paper withBorder p="lg" radius="md" shadow="sm">
+                    <Title order={4} mb="lg">
+                      Historia wejść ({logs.length})
+                    </Title>
+
+                    <ScrollArea style={{ height: '600px' }}>
+                      <Stack gap="sm">
+                        {logs.length === 0 ? (
+                          <Text c="dimmed" ta="center">
+                            Brak logów
+                          </Text>
+                        ) : (
+                          logs.map((log, index) => (
+                            <Paper
+                              key={index}
+                              withBorder
+                              p="sm"
+                              radius="md"
+                              style={{
+                                backgroundColor:
+                                  log.status === 'ok' ? '#f0fdf4' : '#fef2f2',
+                                borderColor: log.status === 'ok' ? '#86efac' : '#fca5a5',
+                                borderWidth: 2,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'scale(1.02)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'scale(1)';
+                              }}
+                            >
+                              {/* Zdjęcie z logów */}
+                              <Box mb="sm" style={{ cursor: 'pointer' }}>
+                                <Image
+                                  src={getLogPhotoUrl(log.filename)}
+                                  alt="Log verification"
+                                  radius="md"
+                                  onClick={() => {
+                                    setSelectedLogImage(getLogPhotoUrl(log.filename));
+                                    setSelectedLogFilename(log.filename);
+                                  }}
+                                  style={{
+                                    transition: 'all 0.2s ease',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.filter = 'brightness(0.9)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.filter = 'brightness(1)';
+                                  }}
+                                />
+                              </Box>
+
+                              {/* Przycisk pobrania zdjęcia */}
+                              <Button
+                                size="xs"
+                                variant="light"
+                                fullWidth
+                                mb="sm"
+                                leftSection={<IconDownload size={12} />}
+                                onClick={() => downloadLogImage(log.filename)}
                               >
-                                {log.status === 'ok' ? 'Udane' : 'Odrzucone'}
-                              </Badge>
-                            </Group>
+                                Pobierz zdjęcie
+                              </Button>
 
-                            <Text size="xs" c="dimmed">
-                              {formatTimestamp(log.timestamp)}
-                            </Text>
-                          </Paper>
-                        ))
-                      )}
+                              <Group gap="sm" mb="sm">
+                                <Avatar
+                                  src={getEmployeePhotoUrl(log.photo_ref)}
+                                  size="lg"
+                                  radius="md"
+                                />
+                                <div style={{ flex: 1 }}>
+                                  <Text fw={600} size="sm">
+                                    {log.employee_name}
+                                  </Text>
+                                  <Text size="xs" c="dimmed">
+                                    ID: {log.user_id}
+                                  </Text>
+                                </div>
+                                <Badge
+                                  color={log.status === 'ok' ? 'green' : 'red'}
+                                  variant="filled"
+                                  leftSection={
+                                    log.status === 'ok' ? (
+                                      <IconCheck size={14} />
+                                    ) : (
+                                      <IconX size={14} />
+                                    )
+                                  }
+                                >
+                                  {log.status === 'ok' ? 'Udane' : 'Odrzucone'}
+                                </Badge>
+                              </Group>
+
+                              <Text size="xs" c="dimmed">
+                                {formatTimestamp(log.timestamp)}
+                              </Text>
+                            </Paper>
+                          ))
+                        )}
+                      </Stack>
+                    </ScrollArea>
+                  </Paper>
+                </Grid.Col>
+
+                {/* PRAWA STRONA: WYKRES */}
+                <Grid.Col span={{ base: 12, sm: 12, md: 6 }}>
+                  <Paper withBorder p="lg" radius="md" shadow="sm">
+                    <Title order={4} mb="lg">
+                      Statystyka wejść
+                    </Title>
+
+                    {chartData.length === 0 ? (
+                      <Center style={{ height: '400px' }}>
+                        <Text c="dimmed">Brak danych do wyświetlenia</Text>
+                      </Center>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={400}>
+                        <BarChart data={chartData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="ok" fill="#3b82f6" name="Udane wejścia" />
+                          <Bar dataKey="denied" fill="#ef4444" name="Odrzucone wejścia" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+
+                    {/* STATYSTYKA */}
+                    <Stack gap="sm" mt="xl">
+                      <Paper p="sm" style={{ backgroundColor: '#f0fdf4', border: '1px solid #86efac' }} radius="md">
+                        <Text size="sm" c="dimmed">
+                          Udane wejścia
+                        </Text>
+                        <Text fw={700} size="lg" c="green">
+                          {logs.filter((l) => l.status === 'ok').length}
+                        </Text>
+                      </Paper>
+                      <Paper p="sm" style={{ backgroundColor: '#fef2f2', border: '1px solid #fca5a5' }} radius="md">
+                        <Text size="sm" c="dimmed">
+                          Odrzucone wejścia
+                        </Text>
+                        <Text fw={700} size="lg" c="red">
+                          {logs.filter((l) => l.status === 'denied').length}
+                        </Text>
+                      </Paper>
+                      <Paper p="sm" style={{ backgroundColor: '#f3f4f6', border: '1px solid #d1d5db' }} radius="md">
+                        <Text size="sm" c="dimmed">
+                          Współczynnik sukcesu
+                        </Text>
+                        <Text fw={700} size="lg" c="blue">
+                          {logs.length === 0
+                            ? '0%'
+                            : `${(
+                                (logs.filter((l) => l.status === 'ok').length / logs.length) *
+                                100
+                              ).toFixed(1)}%`}
+                        </Text>
+                      </Paper>
                     </Stack>
-                  </ScrollArea>
-                </Paper>
-              </Grid.Col>
-
-              {/* PRAWA STRONA: WYKRES */}
-              <Grid.Col span={{ base: 12, sm: 12, md: 6 }}>
-                <Paper withBorder p="lg" radius="md" shadow="sm">
-                  <Title order={4} mb="lg">
-                    Statystyka wejść
-                  </Title>
-
-                  {chartData.length === 0 ? (
-                    <Center style={{ height: '400px' }}>
-                      <Text c="dimmed">Brak danych do wyświetlenia</Text>
-                    </Center>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={400}>
-                      <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="ok" fill="#3b82f6" name="Udane wejścia" />
-                        <Bar dataKey="denied" fill="#ef4444" name="Odrzucone wejścia" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
-
-                  {/* STATYSTYKA */}
-                  <Stack gap="sm" mt="xl">
-                    <Paper p="sm" style={{ backgroundColor: '#f0fdf4', border: '1px solid #86efac' }} radius="md">
-                      <Text size="sm" c="dimmed">
-                        Udane wejścia
-                      </Text>
-                      <Text fw={700} size="lg" c="green">
-                        {logs.filter((l) => l.status === 'ok').length}
-                      </Text>
-                    </Paper>
-                    <Paper p="sm" style={{ backgroundColor: '#fef2f2', border: '1px solid #fca5a5' }} radius="md">
-                      <Text size="sm" c="dimmed">
-                        Odrzucone wejścia
-                      </Text>
-                      <Text fw={700} size="lg" c="red">
-                        {logs.filter((l) => l.status === 'denied').length}
-                      </Text>
-                    </Paper>
-                    <Paper p="sm" style={{ backgroundColor: '#f3f4f6', border: '1px solid #d1d5db' }} radius="md">
-                      <Text size="sm" c="dimmed">
-                        Współczynnik sukcesu
-                      </Text>
-                      <Text fw={700} size="lg" c="blue">
-                        {logs.length === 0
-                          ? '0%'
-                          : `${(
-                              (logs.filter((l) => l.status === 'ok').length / logs.length) *
-                              100
-                            ).toFixed(1)}%`}
-                      </Text>
-                    </Paper>
-                  </Stack>
-                </Paper>
-              </Grid.Col>
-            </Grid>
+                  </Paper>
+                </Grid.Col>
+              </Grid>
+            </>
           )}
+
+          {/* MODAL DO WYŚWIETLANIA DUŻEGO ZDJĘCIA */}
+          <Modal
+            opened={!!selectedLogImage}
+            onClose={() => {
+              setSelectedLogImage(null);
+              setSelectedLogFilename(null);
+            }}
+            title="Zdjęcie z weryfikacji"
+            size="lg"
+            centered
+          >
+            {selectedLogImage && (
+              <Stack gap="md">
+                <Image src={selectedLogImage} alt="Log verification" radius="md" />
+                <Button
+                  leftSection={<IconDownload size={16} />}
+                  fullWidth
+                  onClick={() => {
+                    if (selectedLogFilename) {
+                      downloadLogImage(selectedLogFilename);
+                    }
+                  }}
+                >
+                  Pobierz zdjęcie
+                </Button>
+              </Stack>
+            )}
+          </Modal>
         </Container>
       </Box>
     </Box>

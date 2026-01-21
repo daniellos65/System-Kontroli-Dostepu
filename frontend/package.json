@@ -13,6 +13,8 @@
     "@mantine/core": "^8.3.12",
     "@mantine/hooks": "^8.3.12",
     "@tabler/icons-react": "^3.36.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.0.0",
     "jsqr": "^1.4.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

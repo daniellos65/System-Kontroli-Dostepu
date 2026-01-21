@@ -28,6 +28,7 @@ import {
   IconTrash,
   IconAlertCircle,
   IconDownload,
+  IconEdit,
 } from '@tabler/icons-react';
 
 interface Employee {
@@ -48,6 +49,13 @@ export default function EmployeesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    firstName: '',
+    lastName: '',
+    photo: null as File | null,
+  });
 
   // Dane formularza dodawania pracownika
   const [formData, setFormData] = useState({
@@ -199,6 +207,68 @@ export default function EmployeesPage() {
     }
   };
 
+  const handleEditEmployee = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setEditFormData({
+      firstName: employee.first_name,
+      lastName: employee.last_name,
+      photo: null,
+    });
+    setShowEditModal(true);
+    setError(null);
+  };
+
+  const handleUpdateEmployee = async () => {
+    if (!editingEmployee) return;
+
+    if (!editFormData.firstName.trim() || !editFormData.lastName.trim()) {
+      setError('Imię i nazwisko są wymagane');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError(null);
+
+      const form = new FormData();
+      form.append('first_name', editFormData.firstName.trim());
+      form.append('last_name', editFormData.lastName.trim());
+      
+      // Jeśli użytkownik wybrał nowe zdjęcie, dodaj je
+      if (editFormData.photo) {
+        form.append('photo', editFormData.photo);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/admin/employees/${editingEmployee.employee_id}`, {
+        method: 'PUT',
+        body: form,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Błąd podczas edycji pracownika');
+      }
+
+      const data = await response.json();
+      console.log('Pracownik zaktualizowany:', data);
+
+      // Reset formularza i odśwież listę
+      setEditingEmployee(null);
+      setEditFormData({ firstName: '', lastName: '', photo: null });
+      setShowEditModal(false);
+      await fetchEmployees();
+
+      // Pokaż komunikat sukcesu
+      alert(`Pracownik ${editFormData.firstName} ${editFormData.lastName} został zaktualizowany!`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Błąd podczas edycji pracownika';
+      setError(message);
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <Box style={{ minHeight: '100vh', backgroundColor: '#f8f9fa', display: 'flex', flexDirection: 'column' }}>
       {/* HEADER */}
@@ -305,6 +375,15 @@ export default function EmployeesPage() {
                       <Table.Td>{emp.last_name}</Table.Td>
                       <Table.Td>
                         <Group justify="flex-end" gap="xs">
+                          <Tooltip label="Edytuj pracownika">
+                            <ActionIcon
+                              color="blue"
+                              variant="light"
+                              onClick={() => handleEditEmployee(emp)}
+                            >
+                              <IconEdit size={16} />
+                            </ActionIcon>
+                          </Tooltip>
                           <Tooltip label="Pobierz kod QR">
                             <ActionIcon
                               color="blue"
@@ -433,6 +512,80 @@ export default function EmployeesPage() {
               onClick={confirmDelete}
             >
               Usuń pracownika
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* MODAL: EDYTUJ PRACOWNIKA */}
+      <Modal
+        opened={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingEmployee(null);
+          setEditFormData({ firstName: '', lastName: '', photo: null });
+          setError(null);
+        }}
+        title="Edytuj pracownika"
+        centered
+        size="md"
+      >
+        <Stack>
+          {error && (
+            <Alert icon={<IconAlertCircle size={16} />} color="red" title="Błąd">
+              {error}
+            </Alert>
+          )}
+
+          <TextInput
+            label="Imię"
+            placeholder="np. Jan"
+            value={editFormData.firstName}
+            onChange={(e) => setEditFormData({ ...editFormData, firstName: e.currentTarget.value })}
+            disabled={submitting}
+          />
+
+          <TextInput
+            label="Nazwisko"
+            placeholder="np. Kowalski"
+            value={editFormData.lastName}
+            onChange={(e) => setEditFormData({ ...editFormData, lastName: e.currentTarget.value })}
+            disabled={submitting}
+          />
+
+          <FileInput
+            label="Nowe zdjęcie pracownika (opcjonalne)"
+            placeholder="Wybierz zdjęcie (PNG, JPG, JPEG, GIF)"
+            accept="image/*"
+            value={editFormData.photo}
+            onChange={(file) => setEditFormData({ ...editFormData, photo: file })}
+            disabled={submitting}
+          />
+          
+          <Text c="dimmed" size="sm">
+            {editFormData.photo ? '✓ Nowe zdjęcie będzie załadowane.' : 'Jeśli wybierzesz nowe zdjęcie, stare zostanie usunięte i wygeneruje się nowy kod QR.'}
+          </Text>
+
+          <Group justify="space-between" mt="lg">
+            <Button
+              variant="subtle"
+              onClick={() => {
+                setShowEditModal(false);
+                setEditingEmployee(null);
+                setEditFormData({ firstName: '', lastName: '', photo: null });
+                setError(null);
+              }}
+              disabled={submitting}
+            >
+              Anuluj
+            </Button>
+            <Button
+              color="blue"
+              onClick={handleUpdateEmployee}
+              loading={submitting}
+              disabled={!editFormData.firstName.trim() || !editFormData.lastName.trim()}
+            >
+              Zapisz zmiany
             </Button>
           </Group>
         </Stack>

@@ -600,6 +600,7 @@ def delete_employee(employee_id):
 def update_employee(employee_id):
     """
     Aktualizuje dane pracownika (imię, nazwisko, zdjęcie)
+    Jeśli zmienia się zdjęcie, usuwany jest stary QR i generowany nowy
     """
     try:
         connection = get_db_connection()
@@ -609,7 +610,7 @@ def update_employee(employee_id):
         try:
             with connection.cursor() as cursor:
                 # Sprawdzenie czy pracownik istnieje
-                query = "SELECT photo_ref FROM Employees WHERE employee_id = %s"
+                query = "SELECT photo_ref, first_name, last_name, qr_code_uuid FROM Employees WHERE employee_id = %s"
                 cursor.execute(query, (employee_id,))
                 employee = cursor.fetchone()
                 
@@ -619,6 +620,7 @@ def update_employee(employee_id):
                 # Przygotowanie do aktualizacji
                 update_fields = []
                 update_values = []
+                photo_changed = False
                 
                 if 'first_name' in request.form and request.form.get('first_name'):
                     update_fields.append('first_name = %s')
@@ -657,15 +659,36 @@ def update_employee(employee_id):
                         
                         update_fields.append('photo_ref = %s')
                         update_values.append(new_photo_filename)
+                        photo_changed = True
                 
                 if not update_fields:
                     return jsonify({'message': 'Brak danych do aktualizacji'}), 400
+                
+                # Wygenerowanie nowego QR jeśli zmieniono zdjęcie
+                if photo_changed:
+                    # Usuń stary QR
+                    qr_generator.delete_qr_for_employee(employee_id, employee['first_name'], employee['last_name'])
+                    
+                    # Wygeneruj nowy UUID dla QR
+                    new_qr_uuid = str(uuid.uuid4())
+                    update_fields.append('qr_code_uuid = %s')
+                    update_values.append(new_qr_uuid)
+                    
+                    # Przygotuj nazwy do wygenerowania nowego QR
+                    first_name = request.form.get('first_name', employee['first_name'])
+                    last_name = request.form.get('last_name', employee['last_name'])
                 
                 # Wykonanie aktualizacji
                 update_values.append(employee_id)
                 update_query = f"UPDATE Employees SET {', '.join(update_fields)} WHERE employee_id = %s"
                 cursor.execute(update_query, update_values)
                 connection.commit()
+                
+                # Wygeneruj nowy QR jeśli zmieniono zdjęcie
+                if photo_changed:
+                    first_name = request.form.get('first_name', employee['first_name'])
+                    last_name = request.form.get('last_name', employee['last_name'])
+                    qr_generator.generate_qr_for_employee(employee_id, first_name, last_name, new_qr_uuid)
                 
                 return jsonify({
                     'success': True,
