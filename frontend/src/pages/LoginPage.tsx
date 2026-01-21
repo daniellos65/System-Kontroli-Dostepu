@@ -30,7 +30,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const apiUrl = `http://${window.location.hostname}:5000/api/admin/login`;
+      const apiUrl = `http://${window.location.hostname}:5001/api/admin/login`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {

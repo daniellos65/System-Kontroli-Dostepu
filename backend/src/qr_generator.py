@@ -7,7 +7,82 @@ from database import get_db_connection
 # (Wychodzimy z 'src' do folderu 'qr_codes' w backendzie)
 QR_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'qr_codes')
 
+def generate_qr_for_employee(employee_id, first_name, last_name, qr_code_uuid):
+    """
+    Generuje kod QR dla JEDNEGO pracownika.
+    Używana podczas dodawania nowego pracownika.
+    
+    Args:
+        employee_id: ID pracownika z bazy
+        first_name: Imię pracownika
+        last_name: Nazwisko pracownika
+        qr_code_uuid: UUID/kod do osadzenia w QR
+    """
+    try:
+        if not os.path.exists(QR_FOLDER):
+            os.makedirs(QR_FOLDER)
+            print(f"Utworzono folder na kody: {QR_FOLDER}")
+        
+        # Generujemy obrazek QR
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(qr_code_uuid)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Zapisujemy plik na dysku
+        name = f"{first_name}_{last_name}"
+        filename = f"{employee_id}_{name}_qr.png"
+        file_path = os.path.join(QR_FOLDER, filename)
+        img.save(file_path)
+
+        print(f"[QR] Wygenerowano kod QR dla {name} (ID: {employee_id}) -> {filename}")
+        return True
+    
+    except Exception as e:
+        print(f"[QR ERROR] Błąd podczas generowania QR dla pracownika {employee_id}: {e}")
+        return False
+
+
+def delete_qr_for_employee(employee_id, first_name, last_name):
+    """
+    Usuwa plik QR dla pracownika.
+    Używana podczas usuwania pracownika.
+    
+    Args:
+        employee_id: ID pracownika
+        first_name: Imię pracownika
+        last_name: Nazwisko pracownika
+    """
+    try:
+        name = f"{first_name}_{last_name}"
+        filename = f"{employee_id}_{name}_qr.png"
+        file_path = os.path.join(QR_FOLDER, filename)
+        
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"[QR] Usunięto kod QR dla {name}: {file_path}")
+            return True
+        else:
+            print(f"[QR] Plik QR nie istnieje: {file_path}")
+            return False
+    
+    except Exception as e:
+        print(f"[QR ERROR] Błąd podczas usuwania QR dla pracownika {employee_id}: {e}")
+        return False
+
+
 def generate_qr_codes_for_all():
+    """
+    Generuje kody QR dla WSZYSTKICH pracowników.
+    Użyteczna przy inicjalizacji systemu, ale NIE powinna być używana 
+    za każdym razem - zamiast tego używaj generate_qr_for_employee().
+    """
     conn = get_db_connection()
     if not conn:
         print("Brak połączenia z bazą.")
@@ -17,7 +92,7 @@ def generate_qr_codes_for_all():
         cur = conn.cursor()
         
         # 1. Pobieramy wszystkich pracowników
-        cur.execute("SELECT employee_id, first_name, last_name FROM Employees;")
+        cur.execute("SELECT employee_id, first_name, last_name, qr_code_uuid FROM Employees;")
         employees = cur.fetchall()
 
         if not os.path.exists(QR_FOLDER):
@@ -30,35 +105,39 @@ def generate_qr_codes_for_all():
             # Obsługa różnicy między słownikiem a krotką (zależnie od ustawień database.py)
             if isinstance(emp, dict):
                 emp_id = emp['employee_id']
-                name = f"{emp['first_name']}_{emp['last_name']}"
+                first_name = emp['first_name']
+                last_name = emp['last_name']
+                qr_code = emp.get('qr_code_uuid')
             else:
                 emp_id = emp[0]
-                name = f"{emp[1]}_{emp[2]}"
+                first_name = emp[1]
+                last_name = emp[2]
+                qr_code = emp[3] if len(emp) > 3 else None
 
-            # 2. Generujemy unikalny ciąg UUID dla pracownika
-            unique_code = str(uuid.uuid4())
+            # Jeśli brak kodu QR, generujemy nowy
+            if not qr_code:
+                qr_code = str(uuid.uuid4())
+                cur.execute("""
+                    UPDATE Employees 
+                    SET qr_code_uuid = %s 
+                    WHERE employee_id = %s;
+                """, (qr_code, emp_id))
+                print(f" Wygenerowano nowy UUID dla: {first_name}_{last_name}")
 
-            # 3. Aktualizujemy bazę danych
-            # Zapisujemy ten kod w tabeli, żeby system wiedział, że ten kod = ten pracownik
-            cur.execute("""
-                UPDATE Employees 
-                SET qr_code_uuid = %s 
-                WHERE employee_id = %s;
-            """, (unique_code, emp_id))
-
-            # 4. Generujemy obrazek QR
+            # Generujemy obrazek QR
             qr = qrcode.QRCode(
                 version=1,
                 error_correction=qrcode.constants.ERROR_CORRECT_L,
                 box_size=10,
                 border=4,
             )
-            qr.add_data(unique_code)
+            qr.add_data(qr_code)
             qr.make(fit=True)
 
             img = qr.make_image(fill_color="black", back_color="white")
             
-            # 5. Zapisujemy plik na dysku
+            # Zapisujemy plik na dysku
+            name = f"{first_name}_{last_name}"
             filename = f"{emp_id}_{name}_qr.png"
             file_path = os.path.join(QR_FOLDER, filename)
             img.save(file_path)

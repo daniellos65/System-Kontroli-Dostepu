@@ -6,6 +6,7 @@ import '@mantine/core/styles.css'; // To musi zostać, ładuje style CSS
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import EmployeesPage from './pages/EmployeesPage';
 import VerifyPage from './pages/VerifyPage';
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/admin" element={<LoginPage />} />
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+          <Route path="/admin/employees" element={<EmployeesPage />} />
           <Route path="/verify" element={<VerifyPage />} />
         </Routes>
       </BrowserRouter>

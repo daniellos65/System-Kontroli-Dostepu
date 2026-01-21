@@ -70,7 +70,7 @@ export default function VerifyPage() {
           
           // Wysłanie do backendu
           try {
-            const apiUrl = `http://${window.location.hostname}:5000/api/verify/qr`;
+            const apiUrl = `http://${window.location.hostname}:5001/api/verify/qr`;
             const response = await fetch(apiUrl, {
               method: 'POST',
               headers: {
@@ -125,7 +125,10 @@ export default function VerifyPage() {
 
       setFaceCheckCount(prev => prev + 1);
 
-      const apiUrl = `http://${window.location.hostname}:5000/api/verify/face`;
+      const apiUrl = `http://${window.location.hostname}:5001/api/verify/face`;
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 sekund timeout
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -138,8 +141,10 @@ export default function VerifyPage() {
           employee_name: employeeData.name,
           photo_ref: employeeData.photo_ref,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       const data = await response.json();
 
       if (response.ok && data.access === 'GRANTED') {
@@ -155,19 +160,25 @@ export default function VerifyPage() {
         setMessage(data.message || 'Dostęp odmówiony!');
       }
     } catch (err) {
-      console.error('Face verification error:', err);
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          console.error('Face verification timeout');
+        } else {
+          console.error('Face verification error:', err);
+        }
+      }
     }
   }, [employeeData, step, navigate]);
 
   // Automatyczna weryfikacja twarzy
   useEffect(() => {
-    if (step === 'face-capture' && faceCheckCount < 10) {
+    if (step === 'face-capture' && faceCheckCount < 20) {
       const interval = setInterval(() => {
         verifyFace();
       }, 1500);
       return () => clearInterval(interval);
-    } else if (step === 'face-capture' && faceCheckCount >= 10) {
-      // Timeout - twarz nie rozpoznana w ciągu ~15 sekund
+    } else if (step === 'face-capture' && faceCheckCount >= 20) {
+      // Timeout - twarz nie rozpoznana w ciągu ~30 sekund
       setStep('error');
       setMessage('Nie rozpoznano twarzy w wyznaczonym czasie! Dostęp odmówiony.');
     }
@@ -264,7 +275,7 @@ export default function VerifyPage() {
                     // Fallback do testowania - WB_qr to kod z bazy
                     setQrScanned(true);
                     setMessage('Znaleziono kod QR, weryfikuję...');
-                    fetch(`http://${window.location.hostname}:5000/api/verify/qr`, {
+                    fetch(`http://${window.location.hostname}:5001/api/verify/qr`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ qr_code: 'WB_qr' })

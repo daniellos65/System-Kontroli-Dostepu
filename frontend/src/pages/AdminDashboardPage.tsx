@@ -84,9 +84,15 @@ export default function AdminDashboardPage() {
                 </div>
               </Group>
               <Text c="dimmed" size="sm" mb={20}>
-                Funkcjonalność do wdrożenia - dodawanie, edycja i usuwanie pracowników
+                Dodawanie, edycja i usuwanie pracowników wraz z automatycznym generowaniem kodów QR
               </Text>
-              <Button fullWidth radius="md" color="blue" variant="light" disabled>
+              <Button 
+                fullWidth 
+                radius="md" 
+                color="blue" 
+                variant="light"
+                onClick={() => navigate('/admin/employees')}
+              >
                 Zarządzaj pracownikami
               </Button>
             </Paper>
