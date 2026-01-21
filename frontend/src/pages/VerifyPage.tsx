@@ -40,6 +40,8 @@ export default function VerifyPage() {
   const [message, setMessage] = useState('Skanuję kod QR...');
   const [qrScanned, setQrScanned] = useState(false);
   const [faceCheckCount, setFaceCheckCount] = useState(0);
+  const [processingTime, setProcessingTime] = useState<number | null>(null);
+  const [processingStartTime, setProcessingStartTime] = useState<number | null>(null);
 
   // Skanowanie QR z video stream
   const scanQRFromCamera = useCallback(() => {
@@ -91,6 +93,10 @@ export default function VerifyPage() {
               });
               setMessage('Kod QR poprawny! Przygotowuję weryfikację twarzy...');
               setFaceCheckCount(0);
+              // Rozpocznij mierzenie czasu od zeskanowania QR
+              const startTime = Date.now();
+              console.log(`[TIMER] Kod QR zeskanowany: ${startTime}`);
+              setProcessingStartTime(startTime);
               
               // Opóźnienie 2 sekund przed przejściem na face capture
               setTimeout(() => {
@@ -153,6 +159,13 @@ export default function VerifyPage() {
       const data = await response.json();
 
       if (response.ok && data.access === 'GRANTED') {
+        // Oblicz czas przetwarzania
+        if (processingStartTime) {
+          const elapsed = Date.now() - processingStartTime;
+          console.log(`[TIMER] Czas przetwarzania: ${elapsed}ms`);
+          setProcessingTime(elapsed);
+        }
+        
         setStep('success');
         setMessage(data.message || 'Dostęp przyznany!');
         
@@ -161,6 +174,12 @@ export default function VerifyPage() {
           navigate('/');
         }, 3000);
       } else if (!response.ok && data.access === 'DENIED') {
+        // Oblicz czas przetwarzania
+        if (processingStartTime) {
+          const elapsed = Date.now() - processingStartTime;
+          setProcessingTime(elapsed);
+        }
+        
         setStep('error');
         setMessage(data.message || 'Dostęp odmówiony!');
       }
@@ -173,7 +192,7 @@ export default function VerifyPage() {
         }
       }
     }
-  }, [employeeData, step, navigate]);
+  }, [employeeData, step, processingStartTime, navigate]);
 
   // Automatyczna weryfikacja twarzy
   useEffect(() => {
@@ -190,6 +209,8 @@ export default function VerifyPage() {
   }, [step, faceCheckCount, verifyFace]);
 
   const handleGoHome = () => {
+    setProcessingStartTime(null);
+    setProcessingTime(null);
     navigate('/');
   };
 
@@ -200,6 +221,8 @@ export default function VerifyPage() {
     setEmployeeData(null);
     setQrScanned(false);
     setFaceCheckCount(0);
+    setProcessingStartTime(null);
+    setProcessingTime(null);
   };
 
   return (
@@ -349,6 +372,17 @@ export default function VerifyPage() {
                 {message}
               </Text>
 
+              {processingTime && (
+                <Paper p={20} mb={20} radius="md" style={{ backgroundColor: '#e3f2fd', border: '2px solid #2196F3' }}>
+                  <Text ta="center" size="lg" fw={600} c="blue" mb="xs">
+                    ⏱️ Czas przetwarzania
+                  </Text>
+                  <Text ta="center" size="xl" fw={700} c="blue">
+                    {(processingTime / 1000).toFixed(2)} sekund
+                  </Text>
+                </Paper>
+              )}
+
               <Stack gap="sm">
                 <Button
                   fullWidth
@@ -382,6 +416,12 @@ export default function VerifyPage() {
               <Text ta="center" mb={30} c="dimmed">
                 {message}
               </Text>
+
+              {processingTime && (
+                <Alert color="blue" mb={20} title="ℹ️ Informacja">
+                  Czas przetwarzania: <strong>{(processingTime / 1000).toFixed(2)}s</strong>
+                </Alert>
+              )}
 
               <Stack gap="sm">
                 <Button

@@ -248,61 +248,49 @@ def health_check():
 @app.route('/api/admin/logs', methods=['GET'])
 def get_logs():
     """
-    Endpoint do pobierania wszystkich logów wejść
-    Zwraca listę logów z informacjami: status, user_id, timestamp, filename
+    Endpoint do pobierania wszystkich logów wejść z bazy danych
+    Zwraca listę logów posortowaną od najnowszych
+    Includes: log_id, entry_status, employee_id, employee_name, photo_snapshot, rejection_reason, access_time
     """
     try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'message': 'Błąd połączenia z bazą danych'}), 500
+        
+        with connection.cursor() as cursor:
+            # Pobierz wszystkie logi wraz z danymi pracowników
+            query = """
+                SELECT 
+                    l.log_id,
+                    l.entry_status,
+                    l.employee_id_fk,
+                    COALESCE(e.first_name || ' ' || e.last_name, 'Unknown') as employee_name,
+                    e.photo_ref,
+                    l.photo_snapshot,
+                    l.rejection_reason,
+                    l.access_time
+                FROM EntryLogs l
+                LEFT JOIN Employees e ON l.employee_id_fk = e.employee_id
+                ORDER BY l.access_time DESC
+            """
+            cursor.execute(query)
+            db_logs = cursor.fetchall()
+        
+        connection.close()
+        
+        # Konwertuj na listę słowników dla JSON
         logs = []
-        
-        if not os.path.exists(LOGS_DIR):
-            return jsonify({'logs': []}), 200
-        
-        # Pobierz wszystkie pliki z katalogu logów
-        files = sorted(os.listdir(LOGS_DIR), reverse=True)
-        
-        for filename in files:
-            if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
-                # Parse nazwy pliku: {status}_{user_id}_{date}_{time}.jpg
-                # Przykład: ok_3_20260121_210942.jpg
-                parts = filename.replace('.jpg', '').replace('.jpeg', '').replace('.png', '').split('_')
-                
-                if len(parts) >= 4:
-                    status = parts[0]  # 'ok' lub 'denied'
-                    try:
-                        user_id = int(parts[1])
-                    except:
-                        continue
-                    
-                    # Timestamp: YYYYMMDD_HHMMSS
-                    date_part = parts[2]  # YYYYMMDD
-                    time_part = parts[3]  # HHMMSS
-                    timestamp_str = f"{date_part}_{time_part}"
-                    
-                    # Pobierz dane pracownika
-                    connection = get_db_connection()
-                    try:
-                        with connection.cursor() as cursor:
-                            query = "SELECT first_name, last_name, photo_ref FROM Employees WHERE employee_id = %s"
-                            cursor.execute(query, (user_id,))
-                            employee = cursor.fetchone()
-                        
-                        employee_name = "Unknown"
-                        photo_ref = None
-                        
-                        if employee:
-                            employee_name = f"{employee['first_name']} {employee['last_name']}"
-                            photo_ref = employee['photo_ref']
-                        
-                        logs.append({
-                            'filename': filename,
-                            'status': status,
-                            'user_id': user_id,
-                            'employee_name': employee_name,
-                            'photo_ref': photo_ref,
-                            'timestamp': timestamp_str
-                        })
-                    finally:
-                        connection.close()
+        for log in db_logs:
+            logs.append({
+                'log_id': log['log_id'],
+                'status': 'ok' if log['entry_status'] == 'SUCCESSFUL' else 'denied',
+                'user_id': log['employee_id_fk'],
+                'employee_name': log['employee_name'],
+                'photo_ref': log['photo_ref'],
+                'filename': log['photo_snapshot'],
+                'timestamp': log['access_time'].strftime('%Y%m%d_%H%M%S') if log['access_time'] else None,
+                'rejection_reason': log['rejection_reason']
+            })
         
         return jsonify({'logs': logs}), 200
     

@@ -42,12 +42,14 @@ import {
 import jsPDF from 'jspdf';
 
 interface LogEntry {
+  log_id: number;
   filename: string;
   status: 'ok' | 'denied';
   user_id: number;
   employee_name: string;
   photo_ref: string | null;
   timestamp: string;
+  rejection_reason: string | null;
 }
 
 const API_BASE_URL = 'http://localhost:5001/api';
@@ -594,6 +596,14 @@ export default function LogsPage() {
                                   {log.status === 'ok' ? 'Udane' : 'Odrzucone'}
                                 </Badge>
                               </Group>
+
+                              {log.status === 'denied' && log.rejection_reason && (
+                                <Alert icon={<IconAlertCircle size={14} />} color="orange" variant="light" mb="sm">
+                                  <Text size="xs" fw={500}>
+                                    Powód: {log.rejection_reason}
+                                  </Text>
+                                </Alert>
+                              )}
 
                               <Text size="xs" c="dimmed">
                                 {formatTimestamp(log.timestamp)}

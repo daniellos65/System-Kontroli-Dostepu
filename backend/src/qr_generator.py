@@ -155,4 +155,41 @@ def generate_qr_codes_for_all():
         conn.close()
 
 if __name__ == "__main__":
+    # 1. WAŻNE: Zakomentuj tę linię, aby NIE generować wszystkiego od nowa
     generate_qr_codes_for_all()
+
+    # 2. Logika do wygenerowania kodu TYLKO dla Jana Nieaktywnego
+    # Szukamy go po UUID, który ustaliliśmy w SQL ('expired-test-uuid')
+    # target_uuid = 'expired-test-uuid'
+    
+    # conn = get_db_connection()
+    # if conn:
+    #     try:
+    #         cur = conn.cursor()
+    #         cur.execute("SELECT employee_id, first_name, last_name FROM Employees WHERE qr_code_uuid = %s", (target_uuid,))
+    #         result = cur.fetchone()
+            
+    #         if result:
+    #             # Rozpakowanie danych (obsługa słownika lub krotki)
+    #             if isinstance(result, dict):
+    #                 emp_id = result['employee_id']
+    #                 f_name = result['first_name']
+    #                 l_name = result['last_name']
+    #             else:
+    #                 emp_id = result[0]
+    #                 f_name = result[1]
+    #                 l_name = result[2]
+
+    #             print(f"Znaleziono pracownika: {f_name} {l_name} (ID: {emp_id})")
+                
+    #             # Wywołujemy funkcję generującą pojedynczy kod
+    #             generate_qr_for_employee(emp_id, f_name, l_name, target_uuid)
+                
+    #         else:
+    #             print(f"BŁĄD: Nie znaleziono pracownika z UUID '{target_uuid}'. Upewnij się, że wykonałeś INSERT w bazie.")
+        
+    #     except Exception as e:
+    #         print(f"Wystąpił błąd: {e}")
+    #     finally:
+    #         conn.close()
+   
