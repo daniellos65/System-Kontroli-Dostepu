@@ -24,13 +24,20 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 app = Flask(__name__)
 
-# Eksplicita konfiguracja CORS - zezwal na DELETE!
+# Eksplicita konfiguracja CORS - zezwal na DELETE i images!
 CORS(app, 
-     resources={r"/api/*": {
-         "origins": "*",
-         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-         "allow_headers": ["Content-Type", "Authorization"]
-     }})
+     resources={
+         r"/api/*": {
+             "origins": "*",
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization"]
+         },
+         r"/uploads/*": {
+             "origins": "*",
+             "methods": ["GET", "OPTIONS"],
+             "allow_headers": ["Content-Type"]
+         }
+     })
 
 # Log all incoming requests
 @app.before_request

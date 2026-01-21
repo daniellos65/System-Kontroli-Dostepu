@@ -152,7 +152,7 @@ export default function LogsPage() {
 
   // Pobierz zdjęcie z logów
   const getLogPhotoUrl = (filename: string): string => {
-    return `${API_BASE_URL.replace('/api', '')}/uploads/logs/${filename}`;
+    return `http://localhost:5001/uploads/logs/${filename}`;
   };
 
   const getEmployeePhotoUrl = (photoRef: string | null): string | null => {
@@ -162,18 +162,38 @@ export default function LogsPage() {
 
   const downloadLogImage = async (filename: string) => {
     try {
-      const response = await fetch(getLogPhotoUrl(filename));
+      const url = getLogPhotoUrl(filename);
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Błąd pobierania: ${response.status} ${response.statusText}`);
+      }
+      
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      
+      // Sprawdź czy blob ma zawartość
+      if (blob.size === 0) {
+        throw new Error('Pobrany plik jest pusty');
+      }
+      
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Czekaj chwilę na rozpoczęcie pobierania, potem posprzątaj
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+      }, 100);
+      
     } catch (err) {
       console.error('Błąd podczas pobierania zdjęcia:', err);
+      setError(`Nie udało się pobrać zdjęcia: ${err instanceof Error ? err.message : 'Nieznany błąd'}`);
     }
   };
 
@@ -188,107 +208,204 @@ export default function LogsPage() {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageHeight = pdf.internal.pageSize.getHeight();
       const pageWidth = pdf.internal.pageSize.getWidth();
-      let yPosition = 10;
-      const margin = 10;
+      let yPosition = 15;
+      const margin = 12;
+      const contentWidth = pageWidth - 2 * margin;
 
-      // Nagłówek
-      pdf.setFontSize(16);
-      pdf.text('Raport Logów Systemu Kontroli Dostępu', margin, yPosition);
-      yPosition += 8;
+      // ============ NAGŁÓWEK ============
+      pdf.setFontSize(18);
+      pdf.setTextColor(31, 31, 31);
+      pdf.text('RAPORT LOGÓW SYSTEMU KONTROLI DOSTĘPU', margin, yPosition);
+      yPosition += 10;
 
+      // Data wygenerowania
       pdf.setFontSize(10);
       pdf.setTextColor(100, 100, 100);
       const generatedDate = new Date().toLocaleString('pl-PL');
       pdf.text(`Wygenerowano: ${generatedDate}`, margin, yPosition);
       yPosition += 8;
 
-      // Statystyka
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFontSize(11);
-      pdf.text('Statystyka:', margin, yPosition);
-      yPosition += 6;
+      // Linia oddzielająca
+      pdf.setDrawColor(180, 180, 180);
+      pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 7;
+
+      // ============ SEKCJA STATYSTYKI ============
+      pdf.setFontSize(12);
+      pdf.setTextColor(31, 31, 31);
+      pdf.text('PODSUMOWANIE STATYSTYK', margin, yPosition);
+      yPosition += 7;
 
       const successCount = logs.filter((l) => l.status === 'ok').length;
       const deniedCount = logs.filter((l) => l.status === 'denied').length;
       const successRate = logs.length > 0 ? ((successCount / logs.length) * 100).toFixed(1) : '0';
 
-      pdf.setFontSize(9);
+      // Statystyka w ramkach
+      pdf.setFontSize(10);
       pdf.setTextColor(50, 50, 50);
-      pdf.text(`• Udane wejścia: ${successCount}`, margin + 5, yPosition);
-      yPosition += 5;
-      pdf.text(`• Odrzucone wejścia: ${deniedCount}`, margin + 5, yPosition);
-      yPosition += 5;
-      pdf.text(`• Współczynnik sukcesu: ${successRate}%`, margin + 5, yPosition);
+      
+      // Lewa kolumna
+      pdf.text('Udane wejścia:', margin + 2, yPosition);
+      pdf.setTextColor(0, 128, 0);
+      pdf.setFontSize(11);
+      pdf.text(successCount.toString(), margin + 50, yPosition);
+      yPosition += 7;
+
+      // Druga pozycja
+      pdf.setTextColor(50, 50, 50);
+      pdf.setFontSize(10);
+      pdf.text('Odrzucone wejścia:', margin + 2, yPosition);
+      pdf.setTextColor(255, 0, 0);
+      pdf.setFontSize(11);
+      pdf.text(deniedCount.toString(), margin + 50, yPosition);
+      yPosition += 7;
+
+      // Trzecia pozycja
+      pdf.setTextColor(50, 50, 50);
+      pdf.setFontSize(10);
+      pdf.text('Współczynnik sukcesu:', margin + 2, yPosition);
+      pdf.setTextColor(0, 102, 204);
+      pdf.setFontSize(11);
+      pdf.text(`${successRate}%`, margin + 50, yPosition);
+      yPosition += 7;
+
+      // Czwarta pozycja
+      pdf.setTextColor(50, 50, 50);
+      pdf.setFontSize(10);
+      pdf.text('Liczba logów:', margin + 2, yPosition);
+      pdf.setTextColor(31, 31, 31);
+      pdf.setFontSize(11);
+      pdf.text(logs.length.toString(), margin + 50, yPosition);
       yPosition += 10;
 
-      // Logi
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFontSize(11);
-      pdf.text('Szczegółowe logi:', margin, yPosition);
+      // Linia oddzielająca
+      pdf.setDrawColor(180, 180, 180);
+      pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 7;
+
+      // ============ SEKCJA SZCZEGÓŁOWYCH LOGÓW ============
+      pdf.setFontSize(12);
+      pdf.setTextColor(31, 31, 31);
+      pdf.text('SZCZEGÓŁOWE LOGI WEJŚĆ', margin, yPosition);
       yPosition += 8;
 
-      // Tabela nagłówków
+      // Nagłówki tabeli
       pdf.setFontSize(9);
-      pdf.setFillColor(200, 200, 200);
-      const colWidths = [15, 20, 30, 25, 30];
-      const headers = ['Status', 'ID', 'Pracownik', 'Godzina', 'Zdjęcie'];
-      let xPosition = margin;
-
-      headers.forEach((header, idx) => {
-        pdf.text(header, xPosition, yPosition, { maxWidth: colWidths[idx] - 2 });
-        xPosition += colWidths[idx];
-      });
-
-      yPosition += 7;
-      pdf.setDrawColor(150, 150, 150);
-      pdf.line(margin, yPosition - 1, pageWidth - margin, yPosition - 1);
-      yPosition += 1;
+      pdf.setFillColor(230, 230, 230);
+      pdf.rect(margin, yPosition - 5, contentWidth, 6, 'F');
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont('', 'bold');
+      
+      const colWidths = {
+        status: 22,
+        id: 18,
+        name: 50,
+        time: 38,
+        result: 18
+      };
+      
+      let xPos = margin + 2;
+      pdf.text('Status', xPos, yPosition);
+      xPos += colWidths.status;
+      pdf.text('ID', xPos, yPosition);
+      xPos += colWidths.id;
+      pdf.text('Imię i Nazwisko', xPos, yPosition);
+      xPos += colWidths.name;
+      pdf.text('Data i Godzina', xPos, yPosition);
+      xPos += colWidths.time;
+      pdf.text('Wynik', xPos, yPosition);
+      
+      yPosition += 8;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 3;
 
       // Dane logów
+      pdf.setFont('', 'normal');
       pdf.setFontSize(8);
-      pdf.setTextColor(0, 0, 0);
 
       for (const log of logs) {
-        // Sprawdź czy jest miejsce na nową linię
-        if (yPosition > pageHeight - 20) {
+        // Sprawdź czy jest miejsce na nową linię (musimy zarezerwować miejsce)
+        if (yPosition > pageHeight - 25) {
           pdf.addPage();
-          yPosition = 10;
+          yPosition = 15;
+          
+          // Powt\u00f3rz nagłówki na nowej stronie
+          pdf.setFontSize(9);
+          pdf.setFillColor(230, 230, 230);
+          pdf.rect(margin, yPosition - 5, contentWidth, 6, 'F');
+          pdf.setTextColor(0, 0, 0);
+          pdf.setFont('', 'bold');
+          
+          xPos = margin + 2;
+          pdf.text('Status', xPos, yPosition);
+          xPos += colWidths.status;
+          pdf.text('ID', xPos, yPosition);
+          xPos += colWidths.id;
+          pdf.text('Imię i Nazwisko', xPos, yPosition);
+          xPos += colWidths.name;
+          pdf.text('Data i Godzina', xPos, yPosition);
+          xPos += colWidths.time;
+          pdf.text('Wynik', xPos, yPosition);
+          
+          yPosition += 8;
+          pdf.setDrawColor(200, 200, 200);
+          pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+          yPosition += 3;
+          
+          pdf.setFont('', 'normal');
+          pdf.setFontSize(8);
         }
 
-        xPosition = margin;
-        const status = log.status === 'ok' ? '✓ Udane' : '✗ Odrzucone';
+        xPos = margin + 2;
         
         // Status
+        const statusText = log.status === 'ok' ? 'UDANE' : 'ODRZUCONE';
         if (log.status === 'ok') {
           pdf.setTextColor(0, 128, 0);
         } else {
           pdf.setTextColor(255, 0, 0);
         }
-        pdf.text(status, xPosition, yPosition, { maxWidth: colWidths[0] - 2 });
+        pdf.text(statusText, xPos, yPosition);
         
         // ID
         pdf.setTextColor(0, 0, 0);
-        xPosition += colWidths[0];
-        pdf.text(log.user_id.toString(), xPosition, yPosition, { maxWidth: colWidths[1] - 2 });
-
-        // Pracownik
-        xPosition += colWidths[1];
-        pdf.text(log.employee_name, xPosition, yPosition, { maxWidth: colWidths[2] - 2 });
-
-        // Godzina
-        xPosition += colWidths[2];
+        xPos += colWidths.status;
+        pdf.text(log.user_id.toString(), xPos, yPosition);
+        
+        // Pracownik (skrócona nazwa)
+        xPos += colWidths.id;
+        const nameParts = log.employee_name.split(' ');
+        const displayName = nameParts.length > 1 
+          ? `${nameParts[0]} ${(nameParts[1] || '')[0] || ''}.`
+          : log.employee_name.substring(0, 20);
+        pdf.text(displayName, xPos, yPosition, { maxWidth: colWidths.name - 2 });
+        
+        // Data i godzina
+        xPos += colWidths.name;
         const formattedTime = formatTimestamp(log.timestamp);
-        pdf.text(formattedTime, xPosition, yPosition, { maxWidth: colWidths[3] - 2 });
-
-        // Zdjęcie (link do pobrania)
-        xPosition += colWidths[3];
-        pdf.setTextColor(0, 0, 255);
-        pdf.textWithLink('[pobierz]', xPosition, yPosition, { pageNumber: undefined });
-
-        yPosition += 6;
+        pdf.text(formattedTime, xPos, yPosition, { maxWidth: colWidths.time - 2 });
+        
+        // Wynik (symbol + tekst)
+        xPos += colWidths.time;
+        if (log.status === 'ok') {
+          pdf.setTextColor(0, 128, 0);
+          pdf.text('✓ OK', xPos, yPosition);
+        } else {
+          pdf.setTextColor(255, 0, 0);
+          pdf.text('✗ DENY', xPos, yPosition);
+        }
+        
+        yPosition += 5;
+        
+        // Linia separatora
+        pdf.setDrawColor(245, 245, 245);
+        pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+        yPosition += 1;
       }
 
-      // Stopka
+      // ============ STOPKA ============
+      yPosition += 5;
       pdf.setFontSize(8);
       pdf.setTextColor(150, 150, 150);
       const totalPages = pdf.internal.pages.length - 1;
@@ -297,7 +414,7 @@ export default function LogsPage() {
         pdf.text(
           `Strona ${i} z ${totalPages}`,
           pageWidth / 2,
-          pageHeight - 5,
+          pageHeight - 8,
           { align: 'center' }
         );
       }
