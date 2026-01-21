@@ -89,9 +89,14 @@ export default function VerifyPage() {
                 name: data.employee_name,
                 photo_ref: data.photo_ref,
               });
-              setStep('face-capture');
-              setMessage('Kod QR poprawny! Teraz weryfikuję twarz...');
+              setMessage('Kod QR poprawny! Przygotowuję weryfikację twarzy...');
               setFaceCheckCount(0);
+              
+              // Opóźnienie 2 sekund przed przejściem na face capture
+              setTimeout(() => {
+                setStep('face-capture');
+                setMessage('Kod QR poprawny! Teraz weryfikuję twarz...');
+              }, 2000);
             } else {
               throw new Error(data.message || 'Kod QR nie znaleziony');
             }
@@ -263,41 +268,6 @@ export default function VerifyPage() {
                   onClick={handleGoHome}
                 >
                   Anuluj
-                </Button>
-                
-                <Button
-                  fullWidth
-                  radius="md"
-                  color="cyan"
-                  size="xs"
-                  variant="subtle"
-                  onClick={() => {
-                    // Fallback do testowania - WB_qr to kod z bazy
-                    setQrScanned(true);
-                    setMessage('Znaleziono kod QR, weryfikuję...');
-                    fetch(`http://${window.location.hostname}:5001/api/verify/qr`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ qr_code: 'WB_qr' })
-                    })
-                      .then(r => r.json())
-                      .then(data => {
-                        if (data.success) {
-                          setEmployeeData({
-                            id: data.employee_id,
-                            name: data.employee_name,
-                            photo_ref: data.photo_ref,
-                          });
-                          setStep('face-capture');
-                          setMessage('Kod QR poprawny! Teraz weryfikuję twarz...');
-                        } else {
-                          setError(data.message);
-                          setStep('error');
-                        }
-                      });
-                  }}
-                >
-                  Test (WB_qr)
                 </Button>
               </Stack>
             </Paper>

@@ -42,7 +42,7 @@ cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python main.py
+python src/api_server.py   
 ```
 
 ### 2. Frontend (React)
@@ -50,7 +50,7 @@ python main.py
 ```bash
 cd frontend
 npm install
-npm start
+npm run dev
 ```
 
 ### 3. Baza Danych
