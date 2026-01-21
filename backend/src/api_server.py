@@ -23,7 +23,19 @@ import uuid
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 app = Flask(__name__)
-CORS(app)
+
+# Eksplicita konfiguracja CORS - zezwal na DELETE!
+CORS(app, 
+     resources={r"/api/*": {
+         "origins": "*",
+         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         "allow_headers": ["Content-Type", "Authorization"]
+     }})
+
+# Log all incoming requests
+@app.before_request
+def log_request():
+    print(f"\n[REQUEST] {request.method} {request.path}")
 
 # --- KONFIGURACJA ŚCIEŻEK ---
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -523,36 +535,50 @@ def delete_employee(employee_id):
     """
     Usuwa pracownika i jego kod QR
     """
+    print(f"\n[DELETE REQUEST] Deleting employee_id={employee_id}")
+    
     try:
         connection = get_db_connection()
         if not connection:
+            print(f"[DELETE ERROR] Cannot connect to database")
             return jsonify({'message': 'Błąd połączenia z bazą danych'}), 500
         
         try:
             with connection.cursor() as cursor:
                 # 1. Pobranie informacji o pracowniku
                 query = "SELECT photo_ref, first_name, last_name FROM Employees WHERE employee_id = %s"
+                print(f"[DELETE] Executing SELECT query")
                 cursor.execute(query, (employee_id,))
                 employee = cursor.fetchone()
                 
                 if not employee:
+                    print(f"[DELETE ERROR] Employee {employee_id} not found")
                     return jsonify({'message': 'Pracownik nie znaleziony'}), 404
+                
+                print(f"[DELETE] Found employee: {employee['first_name']} {employee['last_name']}")
                 
                 # 2. Usuwanie pracownika z bazy
                 delete_query = "DELETE FROM Employees WHERE employee_id = %s"
+                print(f"[DELETE] Executing DELETE query")
                 cursor.execute(delete_query, (employee_id,))
                 connection.commit()
+                print(f"[DELETE] Employee removed from database")
                 
                 # 3. Usuwanie zdjęcia
                 if employee['photo_ref']:
                     photo_path = os.path.join(UPLOADS_DIR, employee['photo_ref'])
+                    print(f"[DELETE] Checking photo at: {photo_path}")
                     if os.path.exists(photo_path):
                         os.remove(photo_path)
-                        print(f"[DELETE] Usunięto zdjęcie: {photo_path}")
+                        print(f"[DELETE] Photo deleted")
+                    else:
+                        print(f"[DELETE WARNING] Photo not found")
                 
                 # 4. Usuwanie kodu QR
+                print(f"[DELETE] Deleting QR code")
                 qr_generator.delete_qr_for_employee(employee_id, employee['first_name'], employee['last_name'])
                 
+                print(f"[DELETE SUCCESS] Employee completely deleted")
                 return jsonify({
                     'success': True,
                     'message': f'Pracownik {employee["first_name"]} {employee["last_name"]} został usunięty'
@@ -560,7 +586,7 @@ def delete_employee(employee_id):
         
         except Exception as e:
             connection.rollback()
-            print(f"[ERROR] Błąd podczas usuwania pracownika: {e}")
+            print(f"[DELETE ERROR] Exception: {e}", exc_info=True)
             return jsonify({'message': f'Błąd podczas usuwania pracownika: {str(e)}'}), 500
         finally:
             connection.close()

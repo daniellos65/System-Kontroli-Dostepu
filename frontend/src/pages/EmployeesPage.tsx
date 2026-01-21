@@ -47,6 +47,7 @@ export default function EmployeesPage() {
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
 
   // Dane formularza dodawania pracownika
   const [formData, setFormData] = useState({
@@ -118,7 +119,7 @@ export default function EmployeesPage() {
       await fetchEmployees();
 
       // Pokaż komunikat sukcesu
-      alert(`✅ Pracownik ${formData.firstName} ${formData.lastName} został dodany!`);
+      alert(`Pracownik ${formData.firstName} ${formData.lastName} został dodany!`);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Błąd podczas dodawania pracownika';
       setError(message);
@@ -129,28 +130,45 @@ export default function EmployeesPage() {
   };
 
   const handleDeleteEmployee = async (employeeId: number, name: string) => {
-    if (!window.confirm(`Czy na pewno chcesz usunąć pracownika ${name}?`)) {
-      return;
-    }
+    console.log(`[DELETE] Opening confirmation for employee ID=${employeeId}`);
+    setDeleteConfirm({ id: employeeId, name });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    
+    const { id: employeeId, name } = deleteConfirm;
+    console.log(`[DELETE] Confirmed deletion for employee ID=${employeeId}`);
+    setDeleteConfirm(null);
 
     try {
       setError(null);
-      const response = await fetch(`${API_BASE_URL}/admin/employees/${employeeId}`, {
+      const url = `${API_BASE_URL}/admin/employees/${employeeId}`;
+      console.log(`[DELETE] Sending DELETE request to: ${url}`);
+      
+      const response = await fetch(url, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
+
+      console.log(`[DELETE] Response status: ${response.status}`);
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error(`[DELETE ERROR]`, errorData);
         throw new Error(errorData.message || 'Błąd podczas usuwania pracownika');
       }
 
+      console.log(`[DELETE] Success! Refreshing list...`);
       // Odśwież listę
       await fetchEmployees();
-      alert(`✅ Pracownik ${name} został usunięty`);
+      alert(`Pracownik ${name} został usunięty`);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Błąd podczas usuwania pracownika';
       setError(message);
-      console.error(err);
+      console.error(`[DELETE CATCH]`, err);
     }
   };
 
@@ -173,7 +191,7 @@ export default function EmployeesPage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      console.log(`✅ Pobrano kod QR dla ${firstName} ${lastName}`);
+      console.log(`Pobrano kod QR dla ${firstName} ${lastName}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Błąd podczas pobierania QR';
       setError(message);
@@ -383,6 +401,38 @@ export default function EmployeesPage() {
               disabled={!formData.firstName.trim() || !formData.lastName.trim() || !formData.photo}
             >
               Dodaj pracownika
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* MODAL: POTWIERDZENIE USUWANIA */}
+      <Modal
+        opened={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        title="Potwierdzenie usuwania"
+        centered
+        size="sm"
+      >
+        <Stack>
+          <Text>
+            Czy na pewno chcesz usunąć pracownika <strong>{deleteConfirm?.name}</strong>?
+          </Text>
+          <Text c="red" size="sm">
+             Ta akcja jest nieodwracalna - pracownik, jego zdjęcie i kod QR zostaną usunięte.
+          </Text>
+          <Group justify="space-between">
+            <Button
+              variant="subtle"
+              onClick={() => setDeleteConfirm(null)}
+            >
+              Anuluj
+            </Button>
+            <Button
+              color="red"
+              onClick={confirmDelete}
+            >
+              Usuń pracownika
             </Button>
           </Group>
         </Stack>
