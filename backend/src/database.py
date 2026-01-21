@@ -5,8 +5,8 @@ import os
 # Konfiguracja bazy (na razie na sztywno, docelowo w pliku .env)
 DB_CONFIG = {
     "dbname": "system_kontroli_dostepu",    # Nazwa bazy danych
-    "user": "wiktorbanek",      # <--- ZMIEŃ NA SWÓJ LOGIN (wynik komendy `whoami`)
-    "password": "",            
+    "user": "lycz",      # <--- ZMIEŃ NA SWÓJ LOGIN (wynik komendy `whoami`)
+    "password": "lycz123",         
     "host": "localhost",
     "port": "5432"
 }

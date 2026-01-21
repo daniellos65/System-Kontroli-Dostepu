@@ -67,9 +67,15 @@ export default function AdminDashboardPage() {
                 </div>
               </Group>
               <Text c="dimmed" size="sm" mb={20}>
-                Funkcjonalność do wdrożenia - podgląd rejestracji wszystkich wejść pracowników
+                Podgląd rejestracji wszystkich wejść pracowników
               </Text>
-              <Button fullWidth radius="md" color="blue" variant="light" disabled>
+              <Button 
+                fullWidth 
+                radius="md" 
+                color="blue" 
+                variant="light"
+                onClick={() => navigate('/admin/logs')}
+              >
                 Przejdź do logów
               </Button>
             </Paper>

@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import EmployeesPage from './pages/EmployeesPage';
+import LogsPage from './pages/LogsPage';
 import VerifyPage from './pages/VerifyPage';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
           <Route path="/admin" element={<LoginPage />} />
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/employees" element={<EmployeesPage />} />
+          <Route path="/admin/logs" element={<LogsPage />} />
           <Route path="/verify" element={<VerifyPage />} />
         </Routes>
       </BrowserRouter>

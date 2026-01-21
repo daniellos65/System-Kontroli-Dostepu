@@ -226,6 +226,94 @@ def health_check():
     return jsonify({'status': 'ok'}), 200
 
 
+@app.route('/api/admin/logs', methods=['GET'])
+def get_logs():
+    """
+    Endpoint do pobierania wszystkich logów wejść
+    Zwraca listę logów z informacjami: status, user_id, timestamp, filename
+    """
+    try:
+        logs = []
+        
+        if not os.path.exists(LOGS_DIR):
+            return jsonify({'logs': []}), 200
+        
+        # Pobierz wszystkie pliki z katalogu logów
+        files = sorted(os.listdir(LOGS_DIR), reverse=True)
+        
+        for filename in files:
+            if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                # Parse nazwy pliku: {status}_{user_id}_{date}_{time}.jpg
+                # Przykład: ok_3_20260121_210942.jpg
+                parts = filename.replace('.jpg', '').replace('.jpeg', '').replace('.png', '').split('_')
+                
+                if len(parts) >= 4:
+                    status = parts[0]  # 'ok' lub 'denied'
+                    try:
+                        user_id = int(parts[1])
+                    except:
+                        continue
+                    
+                    # Timestamp: YYYYMMDD_HHMMSS
+                    date_part = parts[2]  # YYYYMMDD
+                    time_part = parts[3]  # HHMMSS
+                    timestamp_str = f"{date_part}_{time_part}"
+                    
+                    # Pobierz dane pracownika
+                    connection = get_db_connection()
+                    try:
+                        with connection.cursor() as cursor:
+                            query = "SELECT first_name, last_name, photo_ref FROM Employees WHERE employee_id = %s"
+                            cursor.execute(query, (user_id,))
+                            employee = cursor.fetchone()
+                        
+                        employee_name = "Unknown"
+                        photo_ref = None
+                        
+                        if employee:
+                            employee_name = f"{employee['first_name']} {employee['last_name']}"
+                            photo_ref = employee['photo_ref']
+                        
+                        logs.append({
+                            'filename': filename,
+                            'status': status,
+                            'user_id': user_id,
+                            'employee_name': employee_name,
+                            'photo_ref': photo_ref,
+                            'timestamp': timestamp_str
+                        })
+                    finally:
+                        connection.close()
+        
+        return jsonify({'logs': logs}), 200
+    
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        return jsonify({'message': 'Błąd serwera'}), 500
+
+
+@app.route('/uploads/logs/<filename>', methods=['GET'])
+def serve_log_photo(filename):
+    """
+    Serwuje zdjęcie z logów
+    """
+    try:
+        # Walidacja nazwy pliku (bezpieczeństwo)
+        if '..' in filename or '/' in filename:
+            return jsonify({'message': 'Nieprawidłowa nazwa pliku'}), 400
+        
+        file_path = os.path.join(LOGS_DIR, filename)
+        
+        if not os.path.exists(file_path):
+            return jsonify({'message': 'Plik nie znaleziony'}), 404
+        
+        return send_file(file_path, mimetype='image/jpeg')
+    
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        return jsonify({'message': 'Błąd serwera'}), 500
+
+
 @app.route('/uploads/references/<filename>', methods=['GET'])
 def serve_employee_photo(filename):
     """
