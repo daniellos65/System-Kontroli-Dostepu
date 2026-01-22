@@ -73,6 +73,10 @@ System opiera się na 3 głównych encjach:
 | **Wiktor Banek** | Backend / Hardware Integration | Python, Integracja sprzętowa |
 | **Daniel Kubiela** | Computer Vision / Frontend Support | OpenCV, React, Python |
 
+## Dokumentacja techniczna
+https://aghedupl-my.sharepoint.com/:w:/g/personal/blyczak_student_agh_edu_pl/IQCFqS2FWBRwTp1x-tQ574D3AYr47eIeEzqeQ9ntAqr6-lY?e=LAuxQo
+https://drive.google.com/file/d/1nUuR3wcSWlEzURUK_Y5dUoyth7TNqUrE/view?usp=sharing
+
 ## 📄 Licencja
 
 Projekt realizowany w ramach przedmiotu Inżynieria Oprogramowania 2025.
