@@ -29,6 +29,8 @@ import {
   IconAlertCircle,
   IconDownload,
   IconEdit,
+  IconCalendar,
+  IconClock,
 } from '@tabler/icons-react';
 
 interface Employee {
@@ -37,6 +39,7 @@ interface Employee {
   last_name: string;
   photo_ref: string;
   qr_code_uuid: string;
+  qr_valid_until: string; // ISO datetime string
 }
 
 const API_BASE_URL = 'http://localhost:5001/api';
@@ -56,6 +59,9 @@ export default function EmployeesPage() {
     lastName: '',
     photo: null as File | null,
   });
+  const [showRenewQRModal, setShowRenewQRModal] = useState(false);
+  const [renewingEmployee, setRenewingEmployee] = useState<Employee | null>(null);
+  const [newQRValidDate, setNewQRValidDate] = useState<string>('');
 
   // Dane formularza dodawania pracownika
   const [formData, setFormData] = useState({
@@ -269,6 +275,78 @@ export default function EmployeesPage() {
     }
   };
 
+  const handleRenewQRValidity = (employee: Employee) => {
+    setRenewingEmployee(employee);
+    // Ustaw domyślną datę na 1 rok od dzisiaj
+    const tomorrow = new Date();
+    tomorrow.setFullYear(tomorrow.getFullYear() + 1);
+    setNewQRValidDate(tomorrow.toISOString().split('T')[0]);
+    setShowRenewQRModal(true);
+    setError(null);
+  };
+
+  const handleSaveQRValidity = async () => {
+    if (!renewingEmployee || !newQRValidDate) {
+      setError('Wybierz datę ważności');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError(null);
+
+      // Konwertuj datę na format datetime (koniec dnia)
+      const validUntilDate = new Date(newQRValidDate);
+      validUntilDate.setHours(23, 59, 59, 999);
+      const validUntilString = validUntilDate.toISOString();
+
+      const response = await fetch(`${API_BASE_URL}/admin/employees/${renewingEmployee.employee_id}/qr-validity`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          qr_valid_until: validUntilString,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Błąd podczas przedłużania kodu QR');
+      }
+
+      console.log('Data ważności kodu QR przedłużona');
+
+      // Reset modala i odśwież listę
+      setRenewingEmployee(null);
+      setNewQRValidDate('');
+      setShowRenewQRModal(false);
+      await fetchEmployees();
+
+      // Pokaż komunikat sukcesu
+      alert(`Kod QR dla ${renewingEmployee.first_name} ${renewingEmployee.last_name} przedłużony do ${newQRValidDate}!`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Błąd podczas przedłużania kodu QR';
+      setError(message);
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const formatQRValidDate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('pl-PL', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(date);
+    } catch {
+      return dateString;
+    }
+  };
+
   return (
     <Box style={{ minHeight: '100vh', backgroundColor: '#f8f9fa', display: 'flex', flexDirection: 'column' }}>
       {/* HEADER */}
@@ -348,6 +426,7 @@ export default function EmployeesPage() {
                     <Table.Th style={{ width: '10%' }}>Zdjęcie</Table.Th>
                     <Table.Th>Imię</Table.Th>
                     <Table.Th>Nazwisko</Table.Th>
+                    <Table.Th>Data ważności QR</Table.Th>
                     <Table.Th style={{ width: '15%' }} align="right">
                       Akcje
                     </Table.Th>
@@ -374,6 +453,17 @@ export default function EmployeesPage() {
                       <Table.Td>{emp.first_name}</Table.Td>
                       <Table.Td>{emp.last_name}</Table.Td>
                       <Table.Td>
+                        <Group gap="xs">
+                          <IconCalendar size={16} style={{ opacity: 0.6 }} />
+                          <div>
+                            <Text size="sm">{formatQRValidDate(emp.qr_valid_until)}</Text>
+                            <Text size="xs" c="dimmed">
+                              {new Date(emp.qr_valid_until) < new Date() ? '⚠️ WYGASŁ' : 'Ważny'}
+                            </Text>
+                          </div>
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>
                         <Group justify="flex-end" gap="xs">
                           <Tooltip label="Edytuj pracownika">
                             <ActionIcon
@@ -382,6 +472,15 @@ export default function EmployeesPage() {
                               onClick={() => handleEditEmployee(emp)}
                             >
                               <IconEdit size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+                          <Tooltip label="Przedłuż kod QR">
+                            <ActionIcon
+                              color="grape"
+                              variant="light"
+                              onClick={() => handleRenewQRValidity(emp)}
+                            >
+                              <IconClock size={16} />
                             </ActionIcon>
                           </Tooltip>
                           <Tooltip label="Pobierz kod QR">
@@ -586,6 +685,77 @@ export default function EmployeesPage() {
               disabled={!editFormData.firstName.trim() || !editFormData.lastName.trim()}
             >
               Zapisz zmiany
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* MODAL: PRZEDŁUŻ WAŻNOŚĆ KODU QR */}
+      <Modal
+        opened={showRenewQRModal}
+        onClose={() => {
+          setShowRenewQRModal(false);
+          setRenewingEmployee(null);
+          setNewQRValidDate('');
+          setError(null);
+        }}
+        title="Przedłuż ważność kodu QR"
+        centered
+        size="md"
+      >
+        <Stack>
+          {error && (
+            <Alert icon={<IconAlertCircle size={16} />} color="red" title="Błąd">
+              {error}
+            </Alert>
+          )}
+
+          {renewingEmployee && (
+            <Text>
+              Przedłużanie kodu QR dla: <strong>{renewingEmployee.first_name} {renewingEmployee.last_name}</strong>
+            </Text>
+          )}
+
+          <div>
+            <Text size="sm" fw={500} mb="xs">Obecna data ważności</Text>
+            <Text size="sm" c="dimmed">
+              {renewingEmployee ? formatQRValidDate(renewingEmployee.qr_valid_until) : ''}
+            </Text>
+          </div>
+
+          <TextInput
+            type="date"
+            label="Nowa data ważności"
+            value={newQRValidDate}
+            onChange={(e) => setNewQRValidDate(e.currentTarget.value)}
+            disabled={submitting}
+            required
+          />
+
+          <Text size="xs" c="dimmed">
+            Kod QR będzie ważny do końca wybranego dnia (23:59:59).
+          </Text>
+
+          <Group justify="space-between" mt="lg">
+            <Button
+              variant="subtle"
+              onClick={() => {
+                setShowRenewQRModal(false);
+                setRenewingEmployee(null);
+                setNewQRValidDate('');
+                setError(null);
+              }}
+              disabled={submitting}
+            >
+              Anuluj
+            </Button>
+            <Button
+              color="grape"
+              onClick={handleSaveQRValidity}
+              loading={submitting}
+              disabled={!newQRValidDate}
+            >
+              Przedłuż ważność
             </Button>
           </Group>
         </Stack>

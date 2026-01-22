@@ -403,7 +403,7 @@ def get_employees():
         
         try:
             with connection.cursor() as cursor:
-                query = "SELECT employee_id, first_name, last_name, photo_ref, qr_code_uuid FROM Employees ORDER BY first_name, last_name"
+                query = "SELECT employee_id, first_name, last_name, photo_ref, qr_code_uuid, qr_valid_until FROM Employees ORDER BY first_name, last_name"
                 cursor.execute(query)
                 employees = cursor.fetchall()
             
@@ -583,6 +583,55 @@ def delete_employee(employee_id):
             connection.rollback()
             print(f"[DELETE ERROR] Exception: {e}", exc_info=True)
             return jsonify({'message': f'Błąd podczas usuwania pracownika: {str(e)}'}), 500
+        finally:
+            connection.close()
+    
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        return jsonify({'message': 'Błąd serwera'}), 500
+
+
+@app.route('/api/admin/employees/<int:employee_id>/qr-validity', methods=['PUT'])
+def update_qr_validity(employee_id):
+    """
+    Aktualizuje datę ważności kodu QR dla pracownika
+    """
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'message': 'Błąd połączenia z bazą danych'}), 500
+        
+        try:
+            # Pobierz dane z JSON
+            data = request.get_json()
+            if not data or 'qr_valid_until' not in data:
+                return jsonify({'message': 'Brak daty ważności w żądaniu'}), 400
+            
+            new_valid_until = data['qr_valid_until']
+            
+            with connection.cursor() as cursor:
+                # Sprawdzenie czy pracownik istnieje
+                query = "SELECT employee_id FROM Employees WHERE employee_id = %s"
+                cursor.execute(query, (employee_id,))
+                employee = cursor.fetchone()
+                
+                if not employee:
+                    return jsonify({'message': 'Pracownik nie znaleziony'}), 404
+                
+                # Aktualizacja daty ważności
+                update_query = "UPDATE Employees SET qr_valid_until = %s WHERE employee_id = %s"
+                cursor.execute(update_query, (new_valid_until, employee_id))
+                connection.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Data ważności kodu QR została zaktualizowana'
+                }), 200
+        
+        except Exception as e:
+            connection.rollback()
+            print(f"[ERROR] Błąd podczas aktualizacji ważności QR: {e}")
+            return jsonify({'message': f'Błąd: {str(e)}'}), 500
         finally:
             connection.close()
     
