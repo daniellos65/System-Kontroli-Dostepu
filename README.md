@@ -1,8 +1,8 @@
-# 🏭 System Kontroli Wejść (IO 2025)
+#  System Kontroli Wejść (IO 2025)
 
 > **SecureAccess AI** – System Dwuetapowej Kontroli Dostępu z Wykorzystaniem Biometrii Twarzy i Kodów QR.
 
-## 📋 O Projekcie
+##  O Projekcie
 
 Celem projektu jest stworzenie systemu kontroli dostępu do fabryki, który skutecznie eliminuje nadużycia polegające na przekazywaniu kart dostępowych między pracownikami (tzw. *buddy punching*). System integruje dwa mechanizmy weryfikacji:
 
@@ -13,21 +13,20 @@ System rejestruje próby wejścia, zarządza bazą pracowników i generuje rapor
 
 ### Kluczowe Wymagania (KPI)
 
-* ⏱️ **Czas weryfikacji:** < 5 sekund.
-* 🎯 **Trafność rozpoznawania:** > 90%.
-* 📹 **Sprzęt:** Obsługa standardowych kamer USB.
-* 👥 **Skala:** Min. 20 pracowników w bazie.
+**Czas weryfikacji:** < 5 sekund.
+**Trafność rozpoznawania:** > 90%.
+**Sprzęt:** Obsługa standardowych kamer USB.
+**Skala:** Min. 20 pracowników w bazie.
 
-## 🛠️ Technologie
+##  Technologie
 
 | Obszar | Technologia | Uzasadnienie |
 | :--- | :--- | :--- |
 | **Backend / AI** | Python 3.x | Biblioteki `OpenCV`, `face_recognition` do szybkiego prototypowania CV. |
 | **Frontend** | React.js | Nowoczesny panel administratora (SPA). |
 | **Baza Danych** | PostgreSQL | Bezpieczeństwo danych relacyjnych i logów. |
-| **Konteneryzacja** | Docker | Łatwe uruchomienie środowiska (opcjonalnie). |
 
-## ⚙️ Instalacja i Uruchomienie
+## Instalacja i Uruchomienie
 
 ### Wymagania wstępne
 
@@ -42,7 +41,7 @@ cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python main.py
+python src/api_server.py   
 ```
 
 ### 2. Frontend (React)
@@ -50,14 +49,14 @@ python main.py
 ```bash
 cd frontend
 npm install
-npm start
+npm run dev
 ```
 
 ### 3. Baza Danych
 
 *(Tutaj dodać instrukcję importu schematu bazy danych lub polecenie docker-compose)*
 
-## 📂 Struktura Bazy Danych
+##  Struktura Bazy Danych
 
 (wstępna struktura, do zmiany)
 System opiera się na 3 głównych encjach:
@@ -65,7 +64,7 @@ System opiera się na 3 głównych encjach:
 2. **LogWejscia:** `id`, `timestamp`, `status`, `zdjecie_proby`, `powod_odrzucenia`.
 3. **Administrator:** `login`, `hash_hasla`.
 
-## 👥 Zespół Projektowy
+##  Zespół Projektowy
 
 | Imię i Nazwisko | Rola Główna | Kompetencje Kluczowe |
 | :--- | :--- | :--- |
@@ -73,10 +72,6 @@ System opiera się na 3 głównych encjach:
 | **Wiktor Banek** | Backend / Hardware Integration | Python, Integracja sprzętowa |
 | **Daniel Kubiela** | Computer Vision / Frontend Support | OpenCV, React, Python |
 
-## Dokumentacja techniczna
-https://aghedupl-my.sharepoint.com/:w:/g/personal/blyczak_student_agh_edu_pl/IQCFqS2FWBRwTp1x-tQ574D3AYr47eIeEzqeQ9ntAqr6-lY?e=LAuxQo
-https://drive.google.com/file/d/1nUuR3wcSWlEzURUK_Y5dUoyth7TNqUrE/view?usp=sharing
-
-## 📄 Licencja
+##  Licencja
 
 Projekt realizowany w ramach przedmiotu Inżynieria Oprogramowania 2025.

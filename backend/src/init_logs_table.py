@@ -1,5 +1,7 @@
 from database import get_db_connection
 
+# Do Usunięcia
+
 def create_logs_table():
     conn = get_db_connection()
     if conn is None:

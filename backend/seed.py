@@ -1,5 +1,7 @@
 from src.database import get_db_connection
 import datetime
+from werkzeug.security import generate_password_hash
+
 
 def add_test_employee():
     connection = get_db_connection()
@@ -9,7 +11,7 @@ def add_test_employee():
     users = [
         ("1","Wiktor", "Banek", "wiktor.jpg", "WB_qr"),
         ("2","Daniel", "Kubiela", "daniel.jpg", "DK_qr"),
-        ("3","Bartosz", "Łyczak", "bartosz.jpg", "BL_qr"),
+        ("3","Bartosz", "Lyczak", "bartosz.jpg", "BL_qr"),
     ]
 
     try:
@@ -42,5 +44,39 @@ def add_test_employee():
     finally:
         connection.close()
 
+
+def add_test_admin():
+    """Dodaje administratora testowego do bazy danych"""
+    connection = get_db_connection()
+    if connection is None:
+        print("Błąd: nie można nawiązać połączenia z bazą danych")
+        return
+    
+    try:
+        cursor = connection.cursor()
+        
+        # Tworzymy hasło dla administratora test/test123
+        password_hash = generate_password_hash("test123")
+        
+        cursor.execute(
+            """
+            INSERT INTO Administrators (login, password_hash)
+            VALUES (%s, %s)
+            ON CONFLICT (login) DO NOTHING;
+            """,
+            ("test", password_hash)
+        )
+        connection.commit()
+        print("Dodano administratora testowego: login='test', hasło='test123'")
+        
+        cursor.close()
+    except Exception as e:
+        print(f"Błąd podczas dodawania administratora testowego: {e}")
+    finally:
+        connection.close()
+
+
 if __name__ == "__main__":
-    add_test_employee() 
+    add_test_employee()
+    add_test_admin()
+ 

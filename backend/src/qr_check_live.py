@@ -26,7 +26,8 @@ def check_qr_in_db(qr_uuid):
         """, (qr_uuid,))
         
         result = cur.fetchone()
-        
+        print("DEBUG Result:", result)
+
         if not result:
             return None, "Kod QR nieznany."
 
